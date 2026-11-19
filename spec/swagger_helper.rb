@@ -20,6 +20,27 @@ RSpec.configure do |config|
             type: :object,
             properties: { error: { type: :string } },
             required: %w[error]
+          },
+          validation_errors: {
+            type: :object,
+            properties: {
+              errors: {
+                type: :object,
+                additionalProperties: { type: :array, items: { type: :string } }
+              }
+            },
+            required: %w[errors]
+          },
+          book: {
+            type: :object,
+            properties: {
+              id: { type: :string, format: :uuid },
+              serial_number: { type: :string, pattern: "^[0-9]{6}$" },
+              title: { type: :string },
+              author: { type: :string },
+              created_at: { type: :string, format: :"date-time" }
+            },
+            required: %w[id serial_number title author created_at]
           }
         },
         securitySchemes: {
