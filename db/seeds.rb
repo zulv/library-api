@@ -25,4 +25,18 @@ if Rails.env.development?
       book.author = author
     end
   end
+
+  [
+    [ "200001", "Anna Kowalska", "anna.kowalska@example.com" ],
+    [ "200002", "Piotr Nowak", "piotr.nowak@example.com" ],
+    [ "200003", "Katarzyna Wiśniewska", "katarzyna.wisniewska@example.com" ],
+    [ "200004", "Tomasz Wójcik", "tomasz.wojcik@example.com" ],
+    [ "200005", "Magdalena Kamińska", "magdalena.kaminska@example.com" ],
+    [ "200006", "Michał Lewandowski", "michal.lewandowski@example.com" ]
+  ].each do |card_number, full_name, email|
+    Reader.find_or_create_by!(card_number:) do |reader|
+      reader.full_name = full_name
+      reader.email = email
+    end
+  end
 end
