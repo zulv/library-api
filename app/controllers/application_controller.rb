@@ -2,12 +2,22 @@ class ApplicationController < ActionController::API
   include Authentication
 
   rescue_from ActiveRecord::RecordNotFound,       with: :render_not_found
+  rescue_from ActiveRecord::RecordInvalid,        with: :render_unprocessable_content
+  rescue_from ActiveRecord::RecordNotUnique,      with: :render_conflict
   rescue_from ActionController::ParameterMissing, with: :render_bad_request
 
   private
 
   def render_not_found
     render json: { error: "not found" }, status: :not_found
+  end
+
+  def render_unprocessable_content(exception)
+    render json: { errors: exception.record.errors }, status: :unprocessable_content
+  end
+
+  def render_conflict
+    render json: { error: "conflict" }, status: :conflict
   end
 
   def render_bad_request(exception)
