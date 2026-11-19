@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_19_214103) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_19_215326) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -24,6 +24,19 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_19_214103) do
     t.index ["discarded_at"], name: "index_books_on_discarded_at"
     t.index ["serial_number"], name: "index_books_on_serial_number", unique: true
     t.check_constraint "serial_number::text ~ '^[0-9]{6}$'::text", name: "books_serial_number_format"
+  end
+
+  create_table "readers", id: :uuid, default: -> { "uuidv7()" }, force: :cascade do |t|
+    t.string "card_number"
+    t.string "full_name"
+    t.string "email"
+    t.datetime "anonymized_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["card_number"], name: "index_readers_on_card_number", unique: true
+    t.index ["email"], name: "index_readers_on_email", unique: true
+    t.check_constraint "anonymized_at IS NOT NULL OR card_number IS NOT NULL AND full_name IS NOT NULL AND email IS NOT NULL", name: "readers_identity_present_unless_anonymized"
+    t.check_constraint "card_number::text ~ '^[0-9]{6}$'::text", name: "readers_card_number_format"
   end
 
   create_table "sessions", id: :uuid, default: -> { "uuidv7()" }, force: :cascade do |t|
