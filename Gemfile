@@ -22,6 +22,10 @@ gem "solid_queue"
 # Reduces boot times through caching; required in config/boot.rb
 gem "bootsnap", require: false
 
+gem "rswag-api"
+gem "rswag-ui"
+gem "ostruct"
+
 # Use Rack CORS for handling Cross-Origin Resource Sharing (CORS), making cross-origin Ajax possible
 # gem "rack-cors"
 
@@ -37,4 +41,14 @@ group :development, :test do
 
   # Omakase Ruby styling [https://github.com/rails/rubocop-rails-omakase/]
   gem "rubocop-rails-omakase", require: false
+
+  gem "pry-byebug"
+  gem "rspec-rails"
+  gem "rswag-specs"
+  gem "factory_bot_rails"
+  gem "faker"
+end
+
+group :test do
+  gem "shoulda-matchers"
 end
