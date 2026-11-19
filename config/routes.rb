@@ -4,5 +4,8 @@ Rails.application.routes.draw do
 
   get "up" => "rails/health#show", as: :rails_health_check
 
-  resource :session, only: [ :create, :destroy ]
+  defaults format: :json do
+    resource :session, only: [ :create, :destroy ]
+    resources :books, only: [ :index, :show, :create, :destroy ]
+  end
 end
