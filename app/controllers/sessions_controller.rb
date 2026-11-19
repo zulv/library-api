@@ -20,7 +20,7 @@ class SessionsController < ApplicationController
   private
 
   def credentials
-    params.permit(:email_address, :password)
+    params.slice(:email_address, :password).permit(:email_address, :password)
   end
 
   def render_too_many_requests
