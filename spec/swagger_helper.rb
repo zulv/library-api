@@ -13,7 +13,20 @@ RSpec.configure do |config|
       paths: {},
       servers: [
         { url: "http://localhost:3000" }
-      ]
+      ],
+      components: {
+        schemas: {
+          error: {
+            type: :object,
+            properties: { error: { type: :string } },
+            required: %w[error]
+          }
+        },
+        securitySchemes: {
+          bearer_auth: { type: :http, scheme: :bearer }
+        }
+      },
+      security: [ { bearer_auth: [] } ]
     }
   }
 
