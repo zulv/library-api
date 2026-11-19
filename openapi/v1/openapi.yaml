@@ -3,6 +3,79 @@ openapi: 3.0.3
 info:
   title: Library API
   version: v1
-paths: {}
+paths:
+  "/session":
+    post:
+      summary: Creates a session
+      tags:
+      - Authentication
+      security: []
+      parameters: []
+      responses:
+        '201':
+          description: session created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token:
+                    type: string
+                required:
+                - token
+        '401':
+          description: invalid credentials
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/error"
+        '429':
+          description: too many requests
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/error"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email_address:
+                  type: string
+                  format: email
+                password:
+                  type: string
+              required:
+              - email_address
+              - password
+    delete:
+      summary: Destroys the current session
+      tags:
+      - Authentication
+      responses:
+        '204':
+          description: session destroyed
+        '401':
+          description: unauthorized
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/error"
 servers:
 - url: http://localhost:3000
+components:
+  schemas:
+    error:
+      type: object
+      properties:
+        error:
+          type: string
+      required:
+      - error
+  securitySchemes:
+    bearer_auth:
+      type: http
+      scheme: bearer
+security:
+- bearer_auth: []
