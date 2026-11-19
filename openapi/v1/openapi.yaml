@@ -184,6 +184,192 @@ paths:
             application/json:
               schema:
                 "$ref": "#/components/schemas/error"
+  "/readers":
+    get:
+      summary: Lists readers
+      tags:
+      - Readers
+      description: Returns identified readers ordered by creation without email. Anonymized
+        readers are omitted. Pagination metadata is returned in headers.
+      parameters:
+      - name: page
+        in: query
+        required: false
+        description: Page number, starting at 1
+        schema:
+          type: integer
+      - name: limit
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+        required: false
+        description: Page size, default 25, max 100
+      - name: card_number
+        in: query
+        required: false
+        description: Exact card number filter
+        schema:
+          type: string
+      responses:
+        '200':
+          description: readers listed
+          headers:
+            link:
+              schema:
+                type: string
+              description: RFC 8288 links with rels first, prev, next, last
+            current-page:
+              schema:
+                type: integer
+              description: Current page number
+            page-limit:
+              schema:
+                type: integer
+              description: Page size
+            total-pages:
+              schema:
+                type: integer
+              description: Total number of pages
+            total-count:
+              schema:
+                type: integer
+              description: Total number of readers
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  "$ref": "#/components/schemas/reader"
+        '400':
+          description: invalid pagination params
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/error"
+        '401':
+          description: unauthorized
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/error"
+    post:
+      summary: Creates a reader
+      tags:
+      - Readers
+      description: Creates a reader. Full name and email are stored encrypted. Email
+        is lowercased.
+      parameters: []
+      responses:
+        '201':
+          description: reader created
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/reader_details"
+        '400':
+          description: missing reader params
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/error"
+        '409':
+          description: card number or email conflict
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/error"
+        '422':
+          description: validation failed
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/validation_errors"
+        '401':
+          description: unauthorized
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/error"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reader:
+                  type: object
+                  properties:
+                    card_number:
+                      type: string
+                      pattern: "^[0-9]{6}$"
+                    full_name:
+                      type: string
+                      maxLength: 255
+                    email:
+                      type: string
+                      format: email
+                      maxLength: 254
+                  required:
+                  - card_number
+                  - full_name
+                  - email
+              required:
+              - reader
+  "/readers/{id}":
+    parameters:
+    - name: id
+      in: path
+      schema:
+        type: string
+        format: uuid
+      required: true
+      description: Reader id
+    get:
+      summary: Shows a reader
+      tags:
+      - Readers
+      responses:
+        '200':
+          description: reader found
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/reader_details"
+        '404':
+          description: reader not found or anonymized
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/error"
+        '401':
+          description: unauthorized
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/error"
+    delete:
+      summary: Anonymizes a reader
+      tags:
+      - Readers
+      description: Clears the reader's personal data and keeps the row. The card number
+        and email become reusable.
+      responses:
+        '204':
+          description: reader anonymized
+        '404':
+          description: reader not found or already anonymized
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/error"
+        '401':
+          description: unauthorized
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/error"
   "/session":
     post:
       summary: Creates a session
@@ -285,6 +471,46 @@ components:
       - serial_number
       - title
       - author
+      - created_at
+    reader:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        card_number:
+          type: string
+          pattern: "^[0-9]{6}$"
+        full_name:
+          type: string
+      required:
+      - id
+      - card_number
+      - full_name
+    reader_details:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        card_number:
+          type: string
+          pattern: "^[0-9]{6}$"
+        full_name:
+          type: string
+          maxLength: 255
+        email:
+          type: string
+          format: email
+          maxLength: 254
+        created_at:
+          type: string
+          format: date-time
+      required:
+      - id
+      - card_number
+      - full_name
+      - email
       - created_at
   securitySchemes:
     bearer_auth:

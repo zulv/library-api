@@ -41,6 +41,26 @@ RSpec.configure do |config|
               created_at: { type: :string, format: :"date-time" }
             },
             required: %w[id serial_number title author created_at]
+          },
+          reader: {
+            type: :object,
+            properties: {
+              id: { type: :string, format: :uuid },
+              card_number: { type: :string, pattern: "^[0-9]{6}$" },
+              full_name: { type: :string }
+            },
+            required: %w[id card_number full_name]
+          },
+          reader_details: {
+            type: :object,
+            properties: {
+              id: { type: :string, format: :uuid },
+              card_number: { type: :string, pattern: "^[0-9]{6}$" },
+              full_name: { type: :string, maxLength: 255 },
+              email: { type: :string, format: :email, maxLength: 254 },
+              created_at: { type: :string, format: :"date-time" }
+            },
+            required: %w[id card_number full_name email created_at]
           }
         },
         securitySchemes: {
