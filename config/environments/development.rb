@@ -31,6 +31,7 @@ Rails.application.configure do
   config.action_mailer.raise_delivery_errors = true
   config.action_mailer.delivery_method = :smtp
   config.action_mailer.smtp_settings = { address: ENV.fetch("SMTP_ADDRESS", "localhost"), port: ENV.fetch("SMTP_PORT", 1025) }
+  config.action_mailer.preview_paths = [ Rails.root.join("spec/mailers/previews").to_s ]
 
   # Make template changes take effect immediately.
   config.action_mailer.perform_caching = false
