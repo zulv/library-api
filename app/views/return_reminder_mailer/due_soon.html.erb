@@ -1,0 +1,9 @@
+<p>Hello <%= @borrowing.reader.full_name %>,</p>
+
+<p>this is a reminder that the book you borrowed from our library is due on <strong><%= l(@borrowing.due_on, format: :long) %></strong>:</p>
+
+<p><em><%= @borrowing.book.title %></em> by <%= @borrowing.book.author %></p>
+
+<p>Please return it on time.</p>
+
+<p>Your Library</p>

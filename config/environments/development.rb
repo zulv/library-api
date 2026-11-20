@@ -30,7 +30,13 @@ Rails.application.configure do
 
   config.action_mailer.raise_delivery_errors = true
   config.action_mailer.delivery_method = :smtp
-  config.action_mailer.smtp_settings = { address: ENV.fetch("SMTP_ADDRESS", "localhost"), port: ENV.fetch("SMTP_PORT", 1025) }
+  config.action_mailer.smtp_settings = {
+    address: ENV.fetch("SMTP_ADDRESS", "localhost"),
+    port: ENV.fetch("SMTP_PORT", 1025),
+    open_timeout: 5,
+    read_timeout: 5
+  }
+  config.action_mailer.preview_paths = [ Rails.root.join("spec/mailers/previews").to_s ]
 
   # Make template changes take effect immediately.
   config.action_mailer.perform_caching = false
@@ -60,7 +66,7 @@ Rails.application.configure do
   # config.i18n.raise_on_missing_translations = true
 
   # Annotate rendered view with file names.
-  config.action_view.annotate_rendered_view_with_filenames = true
+  config.action_view.annotate_rendered_view_with_filenames = false
 
   # Raise error when a before_action's only/except options reference missing actions.
   config.action_controller.raise_on_missing_callback_actions = true
