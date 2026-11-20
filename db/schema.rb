@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_19_215326) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_20_200522) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -24,6 +24,20 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_19_215326) do
     t.index ["discarded_at"], name: "index_books_on_discarded_at"
     t.index ["serial_number"], name: "index_books_on_serial_number", unique: true
     t.check_constraint "serial_number::text ~ '^[0-9]{6}$'::text", name: "books_serial_number_format"
+  end
+
+  create_table "borrowings", id: :uuid, default: -> { "uuidv7()" }, force: :cascade do |t|
+    t.uuid "book_id", null: false
+    t.uuid "reader_id"
+    t.datetime "borrowed_at", null: false
+    t.date "due_on", null: false
+    t.datetime "returned_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["book_id"], name: "index_borrowings_on_book_id"
+    t.index ["book_id"], name: "index_borrowings_on_book_id_active", unique: true, where: "(returned_at IS NULL)"
+    t.index ["reader_id"], name: "index_borrowings_on_reader_id"
+    t.check_constraint "returned_at IS NULL OR returned_at >= borrowed_at", name: "borrowings_returned_after_borrowed"
   end
 
   create_table "readers", id: :uuid, default: -> { "uuidv7()" }, force: :cascade do |t|
@@ -57,5 +71,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_19_215326) do
     t.index ["email_address"], name: "index_users_on_email_address", unique: true
   end
 
+  add_foreign_key "borrowings", "books", on_delete: :restrict
+  add_foreign_key "borrowings", "readers", on_delete: :restrict
   add_foreign_key "sessions", "users", on_delete: :cascade
 end
