@@ -92,6 +92,178 @@ RSpec.describe Book, type: :model do
     end
   end
 
+  describe "borrowing state" do
+    let(:book) { create(:book) }
+
+    it "is available without borrowings" do
+      expect(book.status).to eq("available")
+      expect(book).not_to be_borrowed
+      expect(book.due_on).to be_nil
+    end
+
+    it "is borrowed with an active borrowing" do
+      borrowing = create(:borrowing, book:)
+
+      expect(book.reload.status).to eq("borrowed")
+      expect(book).to be_borrowed
+      expect(book.due_on).to eq(borrowing.due_on)
+    end
+
+    it "is available again when the only borrowing was returned" do
+      create(:borrowing, :returned, book:)
+
+      expect(book.reload.status).to eq("available")
+      expect(book.due_on).to be_nil
+    end
+  end
+
+  describe "#borrow_by!" do
+    let(:book) { create(:book) }
+    let(:reader) { create(:reader) }
+
+    it "creates an active borrowing for the reader" do
+      borrowing = book.borrow_by!(reader)
+
+      expect(borrowing).to be_persisted
+      expect(borrowing.reader).to eq(reader)
+      expect(borrowing.book).to eq(book)
+      expect(borrowing.returned_at).to be_nil
+    end
+
+    it "sets the due date 30 days ahead" do
+      borrowing = book.borrow_by!(reader)
+
+      expect(borrowing.due_on).to eq(Date.current + 30.days)
+    end
+
+    it "raises when the book is already borrowed" do
+      book.borrow_by!(reader)
+
+      expect { book.borrow_by!(create(:reader)) }.to raise_error(Book::AlreadyBorrowed, "book is already borrowed")
+    end
+
+    it "does not create a second borrowing when the book is already borrowed" do
+      book.borrow_by!(reader)
+
+      expect { book.borrow_by!(create(:reader)) }.to raise_error(Book::AlreadyBorrowed)
+      expect(book.borrowings.count).to eq(1)
+    end
+
+    it "allows borrowing again after a return" do
+      book.borrow_by!(reader)
+      book.return!
+
+      expect { book.borrow_by!(create(:reader)) }.not_to raise_error
+    end
+
+    it "allows one reader to borrow several books" do
+      book.borrow_by!(reader)
+
+      expect { create(:book).borrow_by!(reader) }.not_to raise_error
+    end
+
+    it "raises not found for an anonymized reader" do
+      anonymized = create(:reader, :anonymized)
+
+      expect { book.borrow_by!(anonymized) }.to raise_error(ActiveRecord::RecordNotFound)
+      expect(book.borrowings).to be_empty
+    end
+
+    it "raises not found when the book was discarded behind its back" do
+      stale_book = Book.find(book.id)
+      Book.where(id: book.id).update_all(discarded_at: Time.current)
+
+      expect { stale_book.borrow_by!(reader) }.to raise_error(ActiveRecord::RecordNotFound)
+      expect(Borrowing.count).to eq(0)
+    end
+
+    it "raises not found when the reader was anonymized behind its back" do
+      stale_reader = Reader.find(reader.id)
+      Reader.where(id: reader.id).update_all(card_number: nil, full_name: nil, email: nil, anonymized_at: Time.current)
+
+      expect { book.borrow_by!(stale_reader) }.to raise_error(ActiveRecord::RecordNotFound)
+      expect(Borrowing.count).to eq(0)
+    end
+  end
+
+  describe "#return!" do
+    let(:book) { create(:book) }
+
+    it "marks the active borrowing as returned" do
+      borrowing = book.borrow_by!(create(:reader))
+
+      returned = book.return!
+
+      expect(returned).to eq(borrowing)
+      expect(returned).to be_returned
+      expect(borrowing.reload.returned_at).to be_present
+    end
+
+    it "raises when there is nothing to return" do
+      expect { book.return! }.to raise_error(ActiveRecord::RecordNotFound)
+    end
+
+    it "raises when the last borrowing was already returned" do
+      create(:borrowing, :returned, book:)
+
+      expect { book.return! }.to raise_error(ActiveRecord::RecordNotFound)
+    end
+  end
+
+  describe "#discard" do
+    let(:book) { create(:book) }
+
+    it "refuses to discard a borrowed book" do
+      create(:borrowing, book:)
+
+      expect { book.discard }.to raise_error(Book::CannotDiscardBorrowed, "book is borrowed and can't be removed")
+      expect(book.reload).not_to be_discarded
+    end
+
+    it "refuses to discard! a borrowed book" do
+      create(:borrowing, book:)
+
+      expect { book.discard! }.to raise_error(Book::CannotDiscardBorrowed)
+      expect(book.reload).not_to be_discarded
+    end
+
+    it "discards a book after it was returned" do
+      book.borrow_by!(create(:reader))
+      book.return!
+
+      book.discard!
+
+      expect(book.reload).to be_discarded
+    end
+
+    it "raises when the book was already discarded behind its back" do
+      stale_book = Book.find(book.id)
+      Book.where(id: book.id).update_all(discarded_at: Time.current)
+
+      expect { stale_book.discard! }.to raise_error(Discard::RecordNotDiscarded)
+    end
+
+    it "discards a book that was never borrowed" do
+      expect(book.discard).to be(true)
+    end
+  end
+
+  describe "#borrowing_history" do
+    let(:book) { create(:book) }
+
+    it "lists borrowings newest first" do
+      oldest = create(:borrowing, :returned, book:, borrowed_at: Time.zone.local(2026, 1, 1, 12))
+      newest = create(:borrowing, book:, borrowed_at: Time.zone.local(2026, 3, 1, 12))
+      middle = create(:borrowing, :returned, book:, borrowed_at: Time.zone.local(2026, 2, 1, 12))
+
+      expect(book.borrowing_history).to eq([ newest, middle, oldest ])
+    end
+
+    it "is empty for a book that was never borrowed" do
+      expect(book.borrowing_history).to be_empty
+    end
+  end
+
   describe "database constraints" do
     it "rejects an invalid serial number even when validations are bypassed" do
       book = create(:book)

@@ -1,4 +1,10 @@
 class Reader < ApplicationRecord
+  class HasActiveBorrowing < ConflictError
+    def initialize = super("reader has a borrowed book")
+  end
+
+  has_many :borrowings
+
   encrypts :full_name
   encrypts :email, deterministic: true
 
@@ -21,8 +27,10 @@ class Reader < ApplicationRecord
   end
 
   def anonymize!
-    return if anonymized?
+    with_lock do
+      raise HasActiveBorrowing if borrowings.active.exists?
 
-    update!(card_number: nil, full_name: nil, email: nil, anonymized_at: Time.current)
+      update!(card_number: nil, full_name: nil, email: nil, anonymized_at: Time.current) unless anonymized?
+    end
   end
 end

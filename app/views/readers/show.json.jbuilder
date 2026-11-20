@@ -1,2 +1,2 @@
-json.partial! "readers/reader", reader: @reader
-json.extract! @reader, :email, :created_at
+json.partial! "readers/reader_details", reader: @reader
+json.extract! @reader, :created_at

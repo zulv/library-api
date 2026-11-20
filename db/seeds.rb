@@ -39,4 +39,25 @@ if Rails.env.development?
       reader.email = email
     end
   end
+
+  {
+    "100001" => [ [ "200001", 120, 95 ], [ "200002", 60, 40 ], [ "200003", 10, nil ] ],
+    "100002" => [ [ "200004", 25, nil ] ],
+    "100005" => [ [ "200001", 90, 70 ], [ "200005", 45, 20 ] ],
+    "100008" => [ [ "200006", 2, nil ] ],
+    "100011" => [ [ "200002", 200, 180 ], [ "200003", 30, 5 ] ]
+  }.each do |serial_number, history|
+    book = Book.find_by!(serial_number:)
+    next if book.borrowings.exists?
+
+    Book.transaction do
+      history.each do |card_number, borrowed_days_ago, returned_days_ago|
+        book.borrowings.create!(
+          reader: Reader.find_by!(card_number:),
+          borrowed_at: borrowed_days_ago.days.ago,
+          returned_at: returned_days_ago&.days&.ago
+        )
+      end
+    end
+  end
 end

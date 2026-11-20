@@ -139,11 +139,19 @@ RSpec.describe "Books", type: :request do
       tags "Books"
       produces "application/json"
 
+      description "Returns the book with its borrowing history, newest first. Readers of past borrowings are included with their details or null when anonymized."
+
       response "200", "book found" do
-        schema "$ref" => "#/components/schemas/book"
+        schema "$ref" => "#/components/schemas/book_details"
 
         let(:book) { create(:book, serial_number: "123456") }
         let(:id) { book.id }
+
+        before do
+          anonymized = create(:borrowing, :returned, book:, borrowed_at: Time.zone.local(2026, 1, 1, 12))
+          anonymized.reader.anonymize!
+          create(:borrowing, book:, borrowed_at: Time.zone.local(2026, 2, 1, 12))
+        end
 
         run_test! do |response|
           expect(response.parsed_body).to include("id" => book.id, "serial_number" => "123456")
@@ -173,7 +181,7 @@ RSpec.describe "Books", type: :request do
     delete "Deletes a book" do
       tags "Books"
       produces "application/json"
-      description "Soft deletes the book. Its serial number stays reserved."
+      description "Soft deletes the book. Its serial number stays reserved. A borrowed book can't be deleted."
 
       response "204", "book deleted" do
         let(:book) { create(:book) }
@@ -192,6 +200,20 @@ RSpec.describe "Books", type: :request do
         run_test!
       end
 
+      response "409", "book is borrowed" do
+        schema "$ref" => "#/components/schemas/error"
+
+        let(:book) { create(:book) }
+        let(:id) { book.id }
+
+        before { create(:borrowing, book:) }
+
+        run_test! do |response|
+          expect(response.parsed_body).to eq("error" => "book is borrowed and can't be removed")
+          expect(book.reload).not_to be_discarded
+        end
+      end
+
       response "401", "unauthorized" do
         schema "$ref" => "#/components/schemas/error"
 
@@ -207,6 +229,39 @@ RSpec.describe "Books", type: :request do
   end
 
   describe "GET /books variants" do
+    it "shows an available book without a due date" do
+      create(:book)
+
+      get "/books", headers: headers
+
+      expect(response.parsed_body.first).to include("status" => "available", "due_on" => nil)
+    end
+
+    it "shows a borrowed book with its due date" do
+      borrowing = create(:borrowing)
+
+      get "/books", headers: headers
+
+      expect(response.parsed_body.first).to include("status" => "borrowed", "due_on" => borrowing.due_on.iso8601)
+    end
+
+    it "shows a returned book as available" do
+      create(:borrowing, :returned)
+
+      get "/books", headers: headers
+
+      expect(response.parsed_body.first).to include("status" => "available", "due_on" => nil)
+    end
+
+    it "does not expose reader data or history" do
+      create(:borrowing)
+
+      get "/books", headers: headers
+
+      expect(response.parsed_body.first.keys).to contain_exactly("id", "serial_number", "title", "author", "status", "due_on", "created_at")
+      expect(response.body).not_to include("email")
+    end
+
     it "returns pagination headers for a middle page" do
       create_list(:book, 5)
 
@@ -403,6 +458,57 @@ RSpec.describe "Books", type: :request do
   end
 
   describe "GET /books/:id variants" do
+    it "returns an empty history for a book that was never borrowed" do
+      book = create(:book)
+
+      get "/books/#{book.id}", headers: headers
+
+      expect(response.parsed_body).to include("status" => "available", "due_on" => nil, "borrowings" => [])
+    end
+
+    it "includes the history newest first" do
+      book = create(:book)
+      oldest = create(:borrowing, :returned, book:, borrowed_at: Time.zone.local(2026, 1, 1, 12))
+      newest = create(:borrowing, book:, borrowed_at: Time.zone.local(2026, 3, 1, 12))
+      middle = create(:borrowing, :returned, book:, borrowed_at: Time.zone.local(2026, 2, 1, 12))
+
+      get "/books/#{book.id}", headers: headers
+
+      expect(response.parsed_body["borrowings"].pluck("id")).to eq([ newest.id, middle.id, oldest.id ])
+    end
+
+    it "includes reader details with email in the history" do
+      reader = create(:reader, card_number: "123456", full_name: "Ann Smith", email: "ann@example.com")
+      book = create(:book)
+      create(:borrowing, book:, reader:)
+
+      get "/books/#{book.id}", headers: headers
+
+      expect(response.parsed_body.dig("borrowings", 0, "reader")).to include(
+        "id" => reader.id, "card_number" => "123456", "full_name" => "Ann Smith", "email" => "ann@example.com"
+      )
+    end
+
+    it "shows the active borrowing with status and due date" do
+      book = create(:book)
+      borrowing = create(:borrowing, book:)
+
+      get "/books/#{book.id}", headers: headers
+
+      expect(response.parsed_body).to include("status" => "borrowed", "due_on" => borrowing.due_on.iso8601)
+      expect(response.parsed_body.dig("borrowings", 0, "returned_at")).to be_nil
+    end
+
+    it "shows a null reader for an anonymized reader" do
+      book = create(:book)
+      borrowing = create(:borrowing, :returned, book:)
+      borrowing.reader.anonymize!
+
+      get "/books/#{book.id}", headers: headers
+
+      expect(response.parsed_body["borrowings"].first).to include("id" => borrowing.id, "reader" => nil)
+    end
+
     it "returns 404 for a discarded book" do
       book = create(:book)
       book.discard!
@@ -420,6 +526,35 @@ RSpec.describe "Books", type: :request do
   end
 
   describe "DELETE /books/:id variants" do
+    it "refuses to delete a borrowed book" do
+      book = create(:book)
+      create(:borrowing, book:)
+
+      delete "/books/#{book.id}", headers: headers
+
+      expect(response).to have_http_status(:conflict)
+      expect(response.parsed_body).to eq("error" => "book is borrowed and can't be removed")
+    end
+
+    it "returns 404 when a concurrent delete wins the discard" do
+      book = create(:book)
+      allow_any_instance_of(Book).to receive(:discard!).and_raise(Discard::RecordNotDiscarded.new("Failed to discard the record", book))
+
+      delete "/books/#{book.id}", headers: headers
+
+      expect(response).to have_http_status(:not_found)
+    end
+
+    it "deletes a book after it was returned" do
+      book = create(:book)
+      create(:borrowing, :returned, book:)
+
+      delete "/books/#{book.id}", headers: headers
+
+      expect(response).to have_http_status(:no_content)
+      expect(book.reload).to be_discarded
+    end
+
     it "returns 404 for an already discarded book" do
       book = create(:book)
       book.discard!

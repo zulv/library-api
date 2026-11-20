@@ -145,13 +145,15 @@ paths:
       summary: Shows a book
       tags:
       - Books
+      description: Returns the book with its borrowing history, newest first. Readers
+        of past borrowings are included with their details or null when anonymized.
       responses:
         '200':
           description: book found
           content:
             application/json:
               schema:
-                "$ref": "#/components/schemas/book"
+                "$ref": "#/components/schemas/book_details"
         '404':
           description: book not found
           content:
@@ -168,7 +170,8 @@ paths:
       summary: Deletes a book
       tags:
       - Books
-      description: Soft deletes the book. Its serial number stays reserved.
+      description: Soft deletes the book. Its serial number stays reserved. A borrowed
+        book can't be deleted.
       responses:
         '204':
           description: book deleted
@@ -178,8 +181,101 @@ paths:
             application/json:
               schema:
                 "$ref": "#/components/schemas/error"
+        '409':
+          description: book is borrowed
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/error"
         '401':
           description: unauthorized
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/error"
+  "/books/{book_id}/borrowing":
+    parameters:
+    - name: book_id
+      in: path
+      schema:
+        type: string
+        format: uuid
+      required: true
+      description: Book id
+    post:
+      summary: Borrows a book
+      tags:
+      - Borrowings
+      description: Borrows the book for 30 days. The due date is counted from the
+        current date in the library time zone.
+      parameters: []
+      responses:
+        '201':
+          description: book borrowed
+          headers:
+            Location:
+              schema:
+                type: string
+              description: URL of the borrowed book
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/borrowing"
+        '400':
+          description: missing or blank reader card number
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/error"
+        '401':
+          description: unauthorized
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/error"
+        '404':
+          description: book or reader not found
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/error"
+        '409':
+          description: book is already borrowed
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/error"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reader_card_number:
+                  type: string
+                  pattern: "^[0-9]{6}$"
+              required:
+              - reader_card_number
+    delete:
+      summary: Returns a book
+      tags:
+      - Borrowings
+      description: Marks the active borrowing of the book as returned.
+      responses:
+        '200':
+          description: book returned
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/borrowing"
+        '401':
+          description: unauthorized
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/error"
+        '404':
+          description: book not found or not borrowed
           content:
             application/json:
               schema:
@@ -354,12 +450,18 @@ paths:
       tags:
       - Readers
       description: Clears the reader's personal data and keeps the row. The card number
-        and email become reusable.
+        and email become reusable. A reader with a borrowed book can't be anonymized.
       responses:
         '204':
           description: reader anonymized
         '404':
           description: reader not found or already anonymized
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/error"
+        '409':
+          description: reader has a borrowed book
           content:
             application/json:
               schema:
@@ -463,6 +565,15 @@ components:
           type: string
         author:
           type: string
+        status:
+          type: string
+          enum:
+          - available
+          - borrowed
+        due_on:
+          type: string
+          format: date
+          nullable: true
         created_at:
           type: string
           format: date-time
@@ -471,7 +582,80 @@ components:
       - serial_number
       - title
       - author
+      - status
+      - due_on
       - created_at
+    book_details:
+      allOf:
+      - "$ref": "#/components/schemas/book"
+      - type: object
+        properties:
+          borrowings:
+            type: array
+            items:
+              "$ref": "#/components/schemas/history_entry"
+        required:
+        - borrowings
+    history_entry:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        borrowed_at:
+          type: string
+          format: date-time
+        due_on:
+          type: string
+          format: date
+        returned_at:
+          type: string
+          format: date-time
+          nullable: true
+        reader:
+          anyOf:
+          - "$ref": "#/components/schemas/reader_with_email"
+          - type: object
+            nullable: true
+            maxProperties: 0
+      required:
+      - id
+      - borrowed_at
+      - due_on
+      - returned_at
+      - reader
+    borrowing:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        book_id:
+          type: string
+          format: uuid
+        borrowed_at:
+          type: string
+          format: date-time
+        due_on:
+          type: string
+          format: date
+        returned_at:
+          type: string
+          format: date-time
+          nullable: true
+        reader:
+          anyOf:
+          - "$ref": "#/components/schemas/reader"
+          - type: object
+            nullable: true
+            maxProperties: 0
+      required:
+      - id
+      - book_id
+      - borrowed_at
+      - due_on
+      - returned_at
+      - reader
     reader:
       type: object
       properties:
@@ -487,6 +671,25 @@ components:
       - id
       - card_number
       - full_name
+    reader_with_email:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        card_number:
+          type: string
+          pattern: "^[0-9]{6}$"
+        full_name:
+          type: string
+        email:
+          type: string
+          format: email
+      required:
+      - id
+      - card_number
+      - full_name
+      - email
     reader_details:
       type: object
       properties:

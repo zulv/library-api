@@ -6,7 +6,9 @@ Rails.application.routes.draw do
 
   defaults format: :json do
     resource :session, only: [ :create, :destroy ]
-    resources :books, only: [ :index, :show, :create, :destroy ]
+    resources :books, only: [ :index, :show, :create, :destroy ] do
+      resource :borrowing, only: [ :create, :destroy ]
+    end
     resources :readers, only: [ :index, :show, :create, :destroy ]
   end
 end

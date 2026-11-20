@@ -189,6 +189,58 @@ RSpec.describe Reader, type: :model do
     end
   end
 
+  describe "#anonymize! with borrowings" do
+    let(:reader) { create(:reader) }
+
+    it "raises when the reader has an active borrowing" do
+      create(:borrowing, reader:)
+
+      expect { reader.anonymize! }.to raise_error(Reader::HasActiveBorrowing, "reader has a borrowed book")
+    end
+
+    it "keeps personal data when the reader has an active borrowing" do
+      create(:borrowing, reader:)
+
+      expect { reader.anonymize! }.to raise_error(Reader::HasActiveBorrowing)
+      expect(reader.reload).not_to be_anonymized
+      expect(reader.email).to be_present
+    end
+
+    it "anonymizes after the book was returned" do
+      create(:borrowing, :returned, reader:)
+
+      reader.anonymize!
+
+      expect(reader.reload).to be_anonymized
+    end
+
+    it "anonymizes after returning through the book" do
+      book = create(:book)
+      book.borrow_by!(reader)
+      book.return!
+
+      reader.anonymize!
+
+      expect(reader.reload).to be_anonymized
+    end
+
+    it "keeps borrowings after anonymization" do
+      borrowing = create(:borrowing, :returned, reader:)
+
+      reader.anonymize!
+
+      expect(Borrowing.find(borrowing.id).reader_id).to eq(reader.id)
+      expect(reader.borrowings.count).to eq(1)
+    end
+
+    it "is still idempotent for an anonymized reader" do
+      create(:borrowing, :returned, reader:)
+      reader.anonymize!
+
+      expect { reader.anonymize! }.not_to raise_error
+    end
+  end
+
   describe "anonymized readers" do
     it "skips validations" do
       expect(build(:reader, :anonymized)).to be_valid

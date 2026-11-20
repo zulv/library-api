@@ -38,9 +38,46 @@ RSpec.configure do |config|
               serial_number: { type: :string, pattern: "^[0-9]{6}$" },
               title: { type: :string },
               author: { type: :string },
+              status: { type: :string, enum: %w[available borrowed] },
+              due_on: { type: :string, format: :date, nullable: true },
               created_at: { type: :string, format: :"date-time" }
             },
-            required: %w[id serial_number title author created_at]
+            required: %w[id serial_number title author status due_on created_at]
+          },
+          book_details: {
+            allOf: [
+              { "$ref" => "#/components/schemas/book" },
+              {
+                type: :object,
+                properties: {
+                  borrowings: { type: :array, items: { "$ref" => "#/components/schemas/history_entry" } }
+                },
+                required: %w[borrowings]
+              }
+            ]
+          },
+          history_entry: {
+            type: :object,
+            properties: {
+              id: { type: :string, format: :uuid },
+              borrowed_at: { type: :string, format: :"date-time" },
+              due_on: { type: :string, format: :date },
+              returned_at: { type: :string, format: :"date-time", nullable: true },
+              reader: { anyOf: [ { "$ref" => "#/components/schemas/reader_with_email" }, { type: :object, nullable: true, maxProperties: 0 } ] }
+            },
+            required: %w[id borrowed_at due_on returned_at reader]
+          },
+          borrowing: {
+            type: :object,
+            properties: {
+              id: { type: :string, format: :uuid },
+              book_id: { type: :string, format: :uuid },
+              borrowed_at: { type: :string, format: :"date-time" },
+              due_on: { type: :string, format: :date },
+              returned_at: { type: :string, format: :"date-time", nullable: true },
+              reader: { anyOf: [ { "$ref" => "#/components/schemas/reader" }, { type: :object, nullable: true, maxProperties: 0 } ] }
+            },
+            required: %w[id book_id borrowed_at due_on returned_at reader]
           },
           reader: {
             type: :object,
@@ -50,6 +87,16 @@ RSpec.configure do |config|
               full_name: { type: :string }
             },
             required: %w[id card_number full_name]
+          },
+          reader_with_email: {
+            type: :object,
+            properties: {
+              id: { type: :string, format: :uuid },
+              card_number: { type: :string, pattern: "^[0-9]{6}$" },
+              full_name: { type: :string },
+              email: { type: :string, format: :email }
+            },
+            required: %w[id card_number full_name email]
           },
           reader_details: {
             type: :object,
