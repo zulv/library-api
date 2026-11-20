@@ -174,7 +174,7 @@ RSpec.describe "Readers", type: :request do
     delete "Anonymizes a reader" do
       tags "Readers"
       produces "application/json"
-      description "Clears the reader's personal data and keeps the row. The card number and email become reusable."
+      description "Clears the reader's personal data and keeps the row. The card number and email become reusable. A reader with a borrowed book can't be anonymized."
 
       response "204", "reader anonymized" do
         let(:reader) { create(:reader) }
@@ -191,6 +191,20 @@ RSpec.describe "Readers", type: :request do
         let(:id) { SecureRandom.uuid }
 
         run_test!
+      end
+
+      response "409", "reader has a borrowed book" do
+        schema "$ref" => "#/components/schemas/error"
+
+        let(:reader) { create(:reader) }
+        let(:id) { reader.id }
+
+        before { create(:borrowing, reader:) }
+
+        run_test! do |response|
+          expect(response.parsed_body).to eq("error" => "reader has a borrowed book")
+          expect(reader.reload).not_to be_anonymized
+        end
       end
 
       response "401", "unauthorized" do
@@ -382,6 +396,25 @@ RSpec.describe "Readers", type: :request do
   end
 
   describe "DELETE /readers/:id variants" do
+    it "anonymizes a reader after the book was returned" do
+      reader = create(:reader)
+      create(:borrowing, :returned, reader:)
+
+      delete "/readers/#{reader.id}", headers: headers
+
+      expect(response).to have_http_status(:no_content)
+      expect(reader.reload).to be_anonymized
+    end
+
+    it "keeps the borrowing history after anonymization" do
+      reader = create(:reader)
+      borrowing = create(:borrowing, :returned, reader:)
+
+      delete "/readers/#{reader.id}", headers: headers
+
+      expect(Borrowing.exists?(borrowing.id)).to be(true)
+    end
+
     it "keeps the row in the database" do
       reader = create(:reader)
 

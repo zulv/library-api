@@ -4,7 +4,7 @@ class BooksController < ApplicationController
   before_action :set_book, only: [ :show, :destroy ]
 
   def index
-    @books = paginate(Book.kept.with_serial_number(filters[:serial_number]).order(:id))
+    @books = paginate(Book.kept.includes(:active_borrowing).with_serial_number(filters[:serial_number]).order(:id))
   end
 
   def show
