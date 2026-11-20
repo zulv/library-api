@@ -2,6 +2,12 @@ default: &default
   send_return_reminders:
     class: SendReturnRemindersJob
     schedule: every day at 8am
+  anonymize_old_borrowings:
+    class: AnonymizeOldBorrowingsJob
+    schedule: every day at 3am
+  purge_expired_sessions:
+    class: PurgeExpiredSessionsJob
+    schedule: every day at 3:15am
 
 development:
   <<: *default
