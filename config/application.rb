@@ -41,6 +41,8 @@ module LibraryApi
     # Skip views, helpers and assets when generating a new resource.
     config.api_only = true
 
+    config.action_mailer.logger = nil
+
     config.generators do |g|
       g.orm :active_record, primary_key_type: :uuid
       g.test_framework :rspec
