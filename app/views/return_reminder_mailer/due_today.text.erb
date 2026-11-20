@@ -1,0 +1,9 @@
+Hello <%= @borrowing.reader.full_name %>,
+
+the book you borrowed from our library is due today, <%= l(@borrowing.due_on, format: :long) %>:
+
+<%= @borrowing.book.title %> by <%= @borrowing.book.author %>
+
+Please return it today.
+
+Your Library
