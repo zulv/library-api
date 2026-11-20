@@ -21,4 +21,44 @@ RSpec.describe "Recurring schedule" do
 
     expect(next_run.in_time_zone(warsaw)).to eq(warsaw.local(2026, 3, 29, 8))
   end
+
+  describe "anonymize_old_borrowings" do
+    let(:options) { Rails.application.config_for(:recurring, env: "production").fetch(:anonymize_old_borrowings) }
+
+    it "runs the retention anonymization" do
+      expect(options.fetch(:class)).to eq("AnonymizeOldBorrowingsJob")
+    end
+
+    it "runs at 3:00 in the morning Warsaw time" do
+      next_run = schedule.next_time(Time.utc(2026, 3, 1, 12)).to_t
+
+      expect(next_run.in_time_zone(warsaw)).to eq(warsaw.local(2026, 3, 2, 3, 0))
+    end
+
+    it "keeps 3:00 across the daylight saving change" do
+      next_run = schedule.next_time(Time.utc(2026, 3, 28, 12)).to_t
+
+      expect(next_run.in_time_zone(warsaw)).to eq(warsaw.local(2026, 3, 29, 3, 0))
+    end
+  end
+
+  describe "purge_expired_sessions" do
+    let(:options) { Rails.application.config_for(:recurring, env: "production").fetch(:purge_expired_sessions) }
+
+    it "runs the expired sessions purge" do
+      expect(options.fetch(:class)).to eq("PurgeExpiredSessionsJob")
+    end
+
+    it "runs at 3:15 in the morning Warsaw time" do
+      next_run = schedule.next_time(Time.utc(2026, 3, 1, 12)).to_t
+
+      expect(next_run.in_time_zone(warsaw)).to eq(warsaw.local(2026, 3, 2, 3, 15))
+    end
+
+    it "keeps 3:15 across the daylight saving change" do
+      next_run = schedule.next_time(Time.utc(2026, 3, 28, 12)).to_t
+
+      expect(next_run.in_time_zone(warsaw)).to eq(warsaw.local(2026, 3, 29, 3, 15))
+    end
+  end
 end

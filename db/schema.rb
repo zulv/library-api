@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_20_202450) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_20_204445) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -40,6 +40,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_20_202450) do
     t.index ["book_id"], name: "index_borrowings_on_book_id_active", unique: true, where: "(returned_at IS NULL)"
     t.index ["due_on"], name: "index_borrowings_on_due_on_active", where: "(returned_at IS NULL)"
     t.index ["reader_id"], name: "index_borrowings_on_reader_id"
+    t.index ["returned_at"], name: "index_borrowings_on_returned_at_with_reader", where: "((returned_at IS NOT NULL) AND (reader_id IS NOT NULL))"
     t.check_constraint "returned_at IS NULL OR returned_at >= borrowed_at", name: "borrowings_returned_after_borrowed"
   end
 
