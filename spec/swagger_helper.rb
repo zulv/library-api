@@ -50,9 +50,9 @@ RSpec.configure do |config|
               {
                 type: :object,
                 properties: {
-                  borrowings: { type: :array, items: { "$ref" => "#/components/schemas/history_entry" } }
+                  current_borrowing: { anyOf: [ { "$ref" => "#/components/schemas/history_entry" }, { type: :object, nullable: true, maxProperties: 0 } ] }
                 },
-                required: %w[borrowings]
+                required: %w[current_borrowing]
               }
             ]
           },

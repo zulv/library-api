@@ -269,11 +269,13 @@ RSpec.describe "Borrowings", type: :request do
 
       delete "/books/#{book.id}/borrowing", headers: headers
       get "/books/#{book.id}", headers: headers
+      book_response = response.parsed_body
+      get "/books/#{book.id}/borrowings", headers: headers
 
-      expect(response.parsed_body).to include("status" => "available", "due_on" => nil)
-      expect(response.parsed_body["borrowings"].size).to eq(1)
-      expect(response.parsed_body["borrowings"].first).to include("returned_at" => be_present)
-      expect(response.parsed_body.dig("borrowings", 0, "reader", "id")).to eq(reader.id)
+      expect(book_response).to include("status" => "available", "due_on" => nil, "current_borrowing" => nil)
+      expect(response.parsed_body.size).to eq(1)
+      expect(response.parsed_body.first).to include("returned_at" => be_present)
+      expect(response.parsed_body.dig(0, "reader", "id")).to eq(reader.id)
     end
 
     it "returns the reader of the returned borrowing" do

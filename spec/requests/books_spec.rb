@@ -139,22 +139,23 @@ RSpec.describe "Books", type: :request do
       tags "Books"
       produces "application/json"
 
-      description "Returns the book with its borrowing history, newest first. Readers of past borrowings are included with their details or null when anonymized."
+      description "Returns the book with its current borrowing, or null when the book is available. The full history is available under /books/{book_id}/borrowings."
 
       response "200", "book found" do
         schema "$ref" => "#/components/schemas/book_details"
 
         let(:book) { create(:book, serial_number: "123456") }
+        let(:reader) { create(:reader, card_number: "654321", full_name: "Ann Smith", email: "ann@example.com") }
         let(:id) { book.id }
 
-        before do
-          anonymized = create(:borrowing, :returned, book:, borrowed_at: Time.zone.local(2026, 1, 1, 12))
-          anonymized.reader.anonymize!
-          create(:borrowing, book:, borrowed_at: Time.zone.local(2026, 2, 1, 12))
-        end
+        before { create(:borrowing, book:, reader:) }
 
         run_test! do |response|
-          expect(response.parsed_body).to include("id" => book.id, "serial_number" => "123456")
+          expect(response.parsed_body).to include("id" => book.id, "serial_number" => "123456", "status" => "borrowed")
+          expect(response.parsed_body["current_borrowing"]).to include("returned_at" => nil)
+          expect(response.parsed_body.dig("current_borrowing", "reader")).to include(
+            "id" => reader.id, "card_number" => "654321", "full_name" => "Ann Smith", "email" => "ann@example.com"
+          )
         end
       end
 
@@ -458,55 +459,51 @@ RSpec.describe "Books", type: :request do
   end
 
   describe "GET /books/:id variants" do
-    it "returns an empty history for a book that was never borrowed" do
+    it "returns a null current borrowing for an available book" do
       book = create(:book)
 
       get "/books/#{book.id}", headers: headers
 
-      expect(response.parsed_body).to include("status" => "available", "due_on" => nil, "borrowings" => [])
+      expect(response.parsed_body).to include("status" => "available", "due_on" => nil, "current_borrowing" => nil)
     end
 
-    it "includes the history newest first" do
+    it "returns a null current borrowing for a returned book" do
       book = create(:book)
-      oldest = create(:borrowing, :returned, book:, borrowed_at: Time.zone.local(2026, 1, 1, 12))
-      newest = create(:borrowing, book:, borrowed_at: Time.zone.local(2026, 3, 1, 12))
-      middle = create(:borrowing, :returned, book:, borrowed_at: Time.zone.local(2026, 2, 1, 12))
+      create(:borrowing, :returned, book:)
 
       get "/books/#{book.id}", headers: headers
 
-      expect(response.parsed_body["borrowings"].pluck("id")).to eq([ newest.id, middle.id, oldest.id ])
+      expect(response.parsed_body).to include("status" => "available", "current_borrowing" => nil)
     end
 
-    it "includes reader details with email in the history" do
-      reader = create(:reader, card_number: "123456", full_name: "Ann Smith", email: "ann@example.com")
+    it "does not return a borrowings key" do
       book = create(:book)
-      create(:borrowing, book:, reader:)
+      create(:borrowing, :returned, book:)
+      create(:borrowing, book:)
 
       get "/books/#{book.id}", headers: headers
 
-      expect(response.parsed_body.dig("borrowings", 0, "reader")).to include(
-        "id" => reader.id, "card_number" => "123456", "full_name" => "Ann Smith", "email" => "ann@example.com"
-      )
+      expect(response.parsed_body).not_to have_key("borrowings")
     end
 
-    it "shows the active borrowing with status and due date" do
+    it "returns only the open borrowing among past ones" do
+      book = create(:book)
+      create(:borrowing, :returned, book:, borrowed_at: Time.zone.local(2026, 1, 1, 12))
+      current = create(:borrowing, book:, borrowed_at: Time.zone.local(2026, 2, 1, 12))
+
+      get "/books/#{book.id}", headers: headers
+
+      expect(response.parsed_body["current_borrowing"]).to include("id" => current.id, "returned_at" => nil)
+    end
+
+    it "shows the due date of the current borrowing" do
       book = create(:book)
       borrowing = create(:borrowing, book:)
 
       get "/books/#{book.id}", headers: headers
 
       expect(response.parsed_body).to include("status" => "borrowed", "due_on" => borrowing.due_on.iso8601)
-      expect(response.parsed_body.dig("borrowings", 0, "returned_at")).to be_nil
-    end
-
-    it "shows a null reader for an anonymized reader" do
-      book = create(:book)
-      borrowing = create(:borrowing, :returned, book:)
-      borrowing.reader.anonymize!
-
-      get "/books/#{book.id}", headers: headers
-
-      expect(response.parsed_body["borrowings"].first).to include("id" => borrowing.id, "reader" => nil)
+      expect(response.parsed_body["current_borrowing"]).to include("due_on" => borrowing.due_on.iso8601)
     end
 
     it "returns 404 for a discarded book" do
