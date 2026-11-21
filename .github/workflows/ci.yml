@@ -84,3 +84,6 @@ jobs:
 
       - name: Run tests
         run: bundle exec rspec
+
+      - name: Check OpenAPI docs are up to date
+        run: bundle exec rake rswag:specs:swaggerize && git diff --exit-code openapi/
