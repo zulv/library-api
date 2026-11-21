@@ -28,6 +28,7 @@ The first start installs gems, creates the databases and seeds data. The app is 
 | Swagger UI | http://localhost:3000/api-docs |
 | Mailpit, catches all outgoing email | http://localhost:8025 |
 | Mailer previews | http://localhost:3000/rails/mailers |
+| PostgreSQL | `localhost:5433`, user `postgres`, password `postgres`, database `library_api_development` |
 
 - **Staff login:** `librarian@example.com` / `password` (development only).
 - **Seeded data:** readers `200001`–`200006`, books `100001`–`100015`, some of them already borrowed.
