@@ -10,9 +10,9 @@ RSpec.describe "Data retention", type: :request do
     headers = auth_headers(user)
     AnonymizeOldBorrowingsJob.perform_now
 
-    get "/books/#{book.id}", headers: headers
+    get "/books/#{book.id}/borrowings", headers: headers
 
-    entries = response.parsed_body["borrowings"].index_by { |entry| entry["id"] }
+    entries = response.parsed_body.index_by { |entry| entry["id"] }
     expect(entries.fetch(old.id)).to include("reader" => nil)
     expect(entries.fetch(recent.id).dig("reader", "id")).to eq(recent.reader_id)
   end
