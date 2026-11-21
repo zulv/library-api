@@ -1,5 +1,11 @@
 class BorrowingsController < ApplicationController
+  include Paginated
+
   before_action :set_book
+
+  def index
+    @borrowings = paginate(@book.borrowing_history)
+  end
 
   def create
     @borrowing = @book.borrow_by!(reader)
