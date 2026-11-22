@@ -200,13 +200,13 @@ RSpec.describe Book, type: :model do
     end
 
     it "raises when there is nothing to return" do
-      expect { book.return! }.to raise_error(ActiveRecord::RecordNotFound)
+      expect { book.return! }.to raise_error(Book::NotBorrowed)
     end
 
     it "raises when the last borrowing was already returned" do
       create(:borrowing, :returned, book:)
 
-      expect { book.return! }.to raise_error(ActiveRecord::RecordNotFound)
+      expect { book.return! }.to raise_error(Book::NotBorrowed)
     end
   end
 

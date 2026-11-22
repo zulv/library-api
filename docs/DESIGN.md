@@ -36,7 +36,7 @@ The full contract is in `openapi/v1/openapi.yaml` (OpenAPI 3.0.3). It is generat
 
 - **Borrowing is a resource.** "Update the book status: borrowed / available" is `POST` / `DELETE /books/:book_id/borrowing`. Borrowing and returning take different input (a reader card vs nothing), and every borrowing is also a history entry. A book's status is derived from whether it has an open borrowing, so there is no status column that could disagree with the history.
 - **Book details and borrowing history are separate.** `GET /books/:id` returns the book and who has it now, `GET /books/:book_id/borrowings` returns the full history (borrow date, return date, reader) paginated. Together they cover "a specific book together with the full history of its borrowings". A copy's history only grows, so embedding it in the book response would make that response grow without bound.
-- **One open borrowing per book is enforced by the database.** A partial unique index on `borrowings(book_id) WHERE returned_at IS NULL` guarantees it. Borrowing also locks the book row, so two librarians can't lend the same copy at the same moment (a threaded spec covers it). An accidental double request never creates a second borrowing: the second one gets 409 "book is already borrowed", and a second return gets 404. A client that retried after a timeout can check the book's status and history to confirm its first request went through.
+- **One open borrowing per book is enforced by the database.** A partial unique index on `borrowings(book_id) WHERE returned_at IS NULL` guarantees it. Borrowing also locks the book row, so two librarians can't lend the same copy at the same moment (a threaded spec covers it). An accidental double request never creates a second borrowing: the second one gets 409 "book is already borrowed", and a second return gets 409 "book is not borrowed". A client that retried after a timeout can check the book's status and history to confirm its first request went through.
 - **Loan period.** 30 days. The due date is computed in the library time zone.
 - **Books are soft deleted** with `discard`, so borrowing history keeps pointing at the right title. A borrowed book can't be removed (409). Serial numbers stay unique across removed books because a number identifies one physical copy.
 - **Six digit numbers** are strings validated in the model and by a database check constraint, so leading zeros are kept.
@@ -109,7 +109,7 @@ CI runs the same on every pull request against PostgreSQL 18, plus `bundler-audi
 - Roles and an audit log of access to reader data.
 - Overdue reminders, and extending a loan (`PATCH /books/:book_id/borrowing`). Overdue reminders can repeat, so they would move the reminder history from two columns into a `reminder_deliveries` table (borrowing, kind, sent at).
 - Mission Control – Jobs, behind authentication, to browse finished and failed jobs.
-- An `Idempotency-Key` header for borrowing and returning, so a client retrying after a timeout gets the original response instead of 409/404.
+- An `Idempotency-Key` header for borrowing and returning, so a client retrying after a timeout gets the original response instead of 409.
 - Filtering the book list by status, title or author. Genres and borrowing statistics, which retention already keeps anonymous.
 - Automatic anonymization of readers inactive for N years.
 - Sidekiq once job volume needs it, which only changes the Active Job adapter.

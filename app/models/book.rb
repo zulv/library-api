@@ -5,6 +5,10 @@ class Book < ApplicationRecord
     def initialize = super("book is already borrowed")
   end
 
+  class NotBorrowed < ConflictError
+    def initialize = super("book is not borrowed")
+  end
+
   class CannotDiscardBorrowed < ConflictError
     def initialize = super("book is borrowed and can't be removed")
   end
@@ -46,7 +50,7 @@ class Book < ApplicationRecord
 
   def return!
     with_lock do
-      raise ActiveRecord::RecordNotFound unless borrowed?
+      raise NotBorrowed unless borrowed?
 
       active_borrowing.tap(&:return!)
     end
