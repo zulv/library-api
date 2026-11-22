@@ -1,8 +1,8 @@
 class ApplicationController < ActionController::API
   include Authentication
 
-  rescue_from ActiveRecord::RecordNotFound,       with: :render_not_found
-  rescue_from Discard::RecordNotDiscarded,        with: :render_not_found
+  rescue_from(ActiveRecord::RecordNotFound) { |exception| render_not_found(exception.model) }
+  rescue_from(Discard::RecordNotDiscarded) { |exception| render_not_found(exception.record.model_name) }
   rescue_from ActiveRecord::RecordInvalid,        with: :render_unprocessable_content
   rescue_from ActiveRecord::RecordNotUnique,      with: :render_conflict
   rescue_from ActionController::ParameterMissing, with: :render_bad_request
@@ -10,8 +10,12 @@ class ApplicationController < ActionController::API
 
   private
 
-  def render_not_found
-    render json: { error: "not found" }, status: :not_found
+  def render_not_found(model_name)
+    render json: { error: not_found_message(model_name) }, status: :not_found
+  end
+
+  def not_found_message(model_name)
+    model_name ? "#{model_name.to_s.underscore.humanize(capitalize: false)} not found" : "not found"
   end
 
   def render_unprocessable_content(exception)

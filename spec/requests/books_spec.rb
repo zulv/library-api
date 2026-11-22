@@ -165,7 +165,7 @@ RSpec.describe "Books", type: :request do
         let(:id) { SecureRandom.uuid }
 
         run_test! do |response|
-          expect(response.parsed_body).to eq("error" => "not found")
+          expect(response.parsed_body).to eq("error" => "book not found")
         end
       end
 
@@ -519,6 +519,7 @@ RSpec.describe "Books", type: :request do
       get "/books/not-a-uuid", headers: headers
 
       expect(response).to have_http_status(:not_found)
+      expect(response.parsed_body).to eq("error" => "book not found")
     end
   end
 
@@ -540,6 +541,7 @@ RSpec.describe "Books", type: :request do
       delete "/books/#{book.id}", headers: headers
 
       expect(response).to have_http_status(:not_found)
+      expect(response.parsed_body).to eq("error" => "book not found")
     end
 
     it "deletes a book after it was returned" do
@@ -559,6 +561,7 @@ RSpec.describe "Books", type: :request do
       delete "/books/#{book.id}", headers: headers
 
       expect(response).to have_http_status(:not_found)
+      expect(response.parsed_body).to eq("error" => "book not found")
     end
 
     it "keeps the row in the database" do

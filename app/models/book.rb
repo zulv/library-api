@@ -34,11 +34,11 @@ class Book < ApplicationRecord
 
   def borrow_by!(reader)
     with_lock do
-      raise ActiveRecord::RecordNotFound if discarded?
+      raise ActiveRecord::RecordNotFound.new("Couldn't find Book", "Book") if discarded?
       raise AlreadyBorrowed if borrowed?
 
       reader.lock!
-      raise ActiveRecord::RecordNotFound if reader.anonymized?
+      raise ActiveRecord::RecordNotFound.new("Couldn't find Reader", "Reader") if reader.anonymized?
 
       borrowings.create!(reader:)
     end

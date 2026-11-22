@@ -173,7 +173,7 @@ RSpec.describe Book, type: :model do
       stale_book = Book.find(book.id)
       Book.where(id: book.id).update_all(discarded_at: Time.current)
 
-      expect { stale_book.borrow_by!(reader) }.to raise_error(ActiveRecord::RecordNotFound)
+      expect { stale_book.borrow_by!(reader) }.to raise_error(ActiveRecord::RecordNotFound) { |error| expect(error.model).to eq("Book") }
       expect(Borrowing.count).to eq(0)
     end
 
@@ -181,7 +181,7 @@ RSpec.describe Book, type: :model do
       stale_reader = Reader.find(reader.id)
       Reader.where(id: reader.id).update_all(card_number: nil, full_name: nil, email: nil, anonymized_at: Time.current)
 
-      expect { book.borrow_by!(stale_reader) }.to raise_error(ActiveRecord::RecordNotFound)
+      expect { book.borrow_by!(stale_reader) }.to raise_error(ActiveRecord::RecordNotFound) { |error| expect(error.model).to eq("Reader") }
       expect(Borrowing.count).to eq(0)
     end
   end

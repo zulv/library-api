@@ -63,7 +63,7 @@ RSpec.describe "Borrowings", type: :request do
         let(:payload) { { reader_card_number: "999999" } }
 
         run_test! do |response|
-          expect(response.parsed_body).to eq("error" => "not found")
+          expect(response.parsed_body).to eq("error" => "reader not found")
           expect(Borrowing.count).to eq(0)
         end
       end
@@ -193,6 +193,7 @@ RSpec.describe "Borrowings", type: :request do
       borrow("123456")
 
       expect(response).to have_http_status(:not_found)
+      expect(response.parsed_body).to eq("error" => "reader not found")
       expect(Borrowing.count).to eq(0)
     end
 
@@ -202,6 +203,7 @@ RSpec.describe "Borrowings", type: :request do
       borrow
 
       expect(response).to have_http_status(:not_found)
+      expect(response.parsed_body).to eq("error" => "book not found")
       expect(Borrowing.count).to eq(0)
     end
 
@@ -209,6 +211,7 @@ RSpec.describe "Borrowings", type: :request do
       borrow(book_id: SecureRandom.uuid)
 
       expect(response).to have_http_status(:not_found)
+      expect(response.parsed_body).to eq("error" => "book not found")
     end
 
     it "returns 404 for a malformed book id" do

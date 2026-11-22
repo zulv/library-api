@@ -71,7 +71,7 @@ RSpec.describe "Borrowing history", type: :request do
         let(:book_id) { SecureRandom.uuid }
 
         run_test! do |response|
-          expect(response.parsed_body).to eq("error" => "not found")
+          expect(response.parsed_body).to eq("error" => "book not found")
         end
       end
     end
