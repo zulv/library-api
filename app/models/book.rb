@@ -5,6 +5,10 @@ class Book < ApplicationRecord
     def initialize = super("book is already borrowed")
   end
 
+  class NotBorrowed < ConflictError
+    def initialize = super("book is not borrowed")
+  end
+
   class CannotDiscardBorrowed < ConflictError
     def initialize = super("book is borrowed and can't be removed")
   end
@@ -18,7 +22,7 @@ class Book < ApplicationRecord
 
   validates :serial_number, :title, :author, presence: true
   validates :title, :author, length: { maximum: 255 }
-  validates :serial_number, format: { with: /\A\d{6}\z/, allow_blank: true }, uniqueness: true
+  validates :serial_number, format: { with: /\A\d{6}\z/, message: "must be 6 digits", allow_blank: true }, uniqueness: true
 
   before_discard :ensure_not_borrowed
 
@@ -34,11 +38,11 @@ class Book < ApplicationRecord
 
   def borrow_by!(reader)
     with_lock do
-      raise ActiveRecord::RecordNotFound if discarded?
+      raise ActiveRecord::RecordNotFound.new("Couldn't find Book", "Book") if discarded?
       raise AlreadyBorrowed if borrowed?
 
       reader.lock!
-      raise ActiveRecord::RecordNotFound if reader.anonymized?
+      raise ActiveRecord::RecordNotFound.new("Couldn't find Reader", "Reader") if reader.anonymized?
 
       borrowings.create!(reader:)
     end
@@ -46,7 +50,7 @@ class Book < ApplicationRecord
 
   def return!
     with_lock do
-      raise ActiveRecord::RecordNotFound unless borrowed?
+      raise NotBorrowed unless borrowed?
 
       active_borrowing.tap(&:return!)
     end

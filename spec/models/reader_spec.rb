@@ -35,6 +35,14 @@ RSpec.describe Reader, type: :model do
       expect(build(:reader, card_number: "12345")).not_to be_valid
     end
 
+    it "explains the expected card number format" do
+      reader = build(:reader, card_number: "12345")
+
+      reader.validate
+
+      expect(reader.errors[:card_number]).to eq([ "must be 6 digits" ])
+    end
+
     it "rejects a card number that is too long" do
       expect(build(:reader, card_number: "1234567")).not_to be_valid
     end

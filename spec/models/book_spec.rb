@@ -24,6 +24,14 @@ RSpec.describe Book, type: :model do
       expect(build(:book, serial_number: "12345")).not_to be_valid
     end
 
+    it "explains the expected serial number format" do
+      book = build(:book, serial_number: "12345")
+
+      book.validate
+
+      expect(book.errors[:serial_number]).to eq([ "must be 6 digits" ])
+    end
+
     it "rejects a serial number that is too long" do
       expect(build(:book, serial_number: "1234567")).not_to be_valid
     end
@@ -173,7 +181,7 @@ RSpec.describe Book, type: :model do
       stale_book = Book.find(book.id)
       Book.where(id: book.id).update_all(discarded_at: Time.current)
 
-      expect { stale_book.borrow_by!(reader) }.to raise_error(ActiveRecord::RecordNotFound)
+      expect { stale_book.borrow_by!(reader) }.to raise_error(ActiveRecord::RecordNotFound) { |error| expect(error.model).to eq("Book") }
       expect(Borrowing.count).to eq(0)
     end
 
@@ -181,7 +189,7 @@ RSpec.describe Book, type: :model do
       stale_reader = Reader.find(reader.id)
       Reader.where(id: reader.id).update_all(card_number: nil, full_name: nil, email: nil, anonymized_at: Time.current)
 
-      expect { book.borrow_by!(stale_reader) }.to raise_error(ActiveRecord::RecordNotFound)
+      expect { book.borrow_by!(stale_reader) }.to raise_error(ActiveRecord::RecordNotFound) { |error| expect(error.model).to eq("Reader") }
       expect(Borrowing.count).to eq(0)
     end
   end
@@ -200,13 +208,13 @@ RSpec.describe Book, type: :model do
     end
 
     it "raises when there is nothing to return" do
-      expect { book.return! }.to raise_error(ActiveRecord::RecordNotFound)
+      expect { book.return! }.to raise_error(Book::NotBorrowed)
     end
 
     it "raises when the last borrowing was already returned" do
       create(:borrowing, :returned, book:)
 
-      expect { book.return! }.to raise_error(ActiveRecord::RecordNotFound)
+      expect { book.return! }.to raise_error(Book::NotBorrowed)
     end
   end
 

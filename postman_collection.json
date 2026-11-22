@@ -861,7 +861,7 @@
           ]
         },
         {
-          "name": "Return book again (404)",
+          "name": "Return book again (409)",
           "request": {
             "method": "DELETE",
             "header": [],
@@ -883,7 +883,7 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"status 404\", () => pm.response.to.have.status(404));"
+                  "pm.test(\"status 409\", () => pm.response.to.have.status(409));"
                 ]
               }
             }

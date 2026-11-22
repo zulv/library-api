@@ -165,7 +165,7 @@ RSpec.describe "Books", type: :request do
         let(:id) { SecureRandom.uuid }
 
         run_test! do |response|
-          expect(response.parsed_body).to eq("error" => "not found")
+          expect(response.parsed_body).to eq("error" => "book not found")
         end
       end
 
@@ -403,6 +403,14 @@ RSpec.describe "Books", type: :request do
   describe "POST /books variants" do
     let(:attributes) { { serial_number: "123456", title: "Dune", author: "Frank Herbert" } }
 
+    it "rejects a malformed JSON body" do
+      post "/books", params: '{"book":', headers: headers.merge("Content-Type" => "application/json")
+
+      expect(response).to have_http_status(:bad_request)
+      expect(response.parsed_body).to eq("error" => "invalid JSON")
+      expect(Book.count).to eq(0)
+    end
+
     it "strips whitespace from title and author" do
       post "/books", params: { book: attributes.merge(title: "  Dune ", author: " Frank Herbert ") }, as: :json, headers: headers
 
@@ -519,6 +527,7 @@ RSpec.describe "Books", type: :request do
       get "/books/not-a-uuid", headers: headers
 
       expect(response).to have_http_status(:not_found)
+      expect(response.parsed_body).to eq("error" => "book not found")
     end
   end
 
@@ -540,6 +549,7 @@ RSpec.describe "Books", type: :request do
       delete "/books/#{book.id}", headers: headers
 
       expect(response).to have_http_status(:not_found)
+      expect(response.parsed_body).to eq("error" => "book not found")
     end
 
     it "deletes a book after it was returned" do
@@ -559,6 +569,7 @@ RSpec.describe "Books", type: :request do
       delete "/books/#{book.id}", headers: headers
 
       expect(response).to have_http_status(:not_found)
+      expect(response.parsed_body).to eq("error" => "book not found")
     end
 
     it "keeps the row in the database" do

@@ -63,7 +63,7 @@ RSpec.describe "Borrowings", type: :request do
         let(:payload) { { reader_card_number: "999999" } }
 
         run_test! do |response|
-          expect(response.parsed_body).to eq("error" => "not found")
+          expect(response.parsed_body).to eq("error" => "reader not found")
           expect(Borrowing.count).to eq(0)
         end
       end
@@ -111,11 +111,21 @@ RSpec.describe "Borrowings", type: :request do
         end
       end
 
-      response "404", "book not found or not borrowed" do
+      response "404", "book not found" do
+        schema "$ref" => "#/components/schemas/error"
+
+        let(:book_id) { SecureRandom.uuid }
+
+        run_test! do |response|
+          expect(response.parsed_body).to eq("error" => "book not found")
+        end
+      end
+
+      response "409", "book is not borrowed" do
         schema "$ref" => "#/components/schemas/error"
 
         run_test! do |response|
-          expect(response.parsed_body).to eq("error" => "not found")
+          expect(response.parsed_body).to eq("error" => "book is not borrowed")
         end
       end
     end
@@ -193,6 +203,7 @@ RSpec.describe "Borrowings", type: :request do
       borrow("123456")
 
       expect(response).to have_http_status(:not_found)
+      expect(response.parsed_body).to eq("error" => "reader not found")
       expect(Borrowing.count).to eq(0)
     end
 
@@ -202,6 +213,7 @@ RSpec.describe "Borrowings", type: :request do
       borrow
 
       expect(response).to have_http_status(:not_found)
+      expect(response.parsed_body).to eq("error" => "book not found")
       expect(Borrowing.count).to eq(0)
     end
 
@@ -209,6 +221,7 @@ RSpec.describe "Borrowings", type: :request do
       borrow(book_id: SecureRandom.uuid)
 
       expect(response).to have_http_status(:not_found)
+      expect(response.parsed_body).to eq("error" => "book not found")
     end
 
     it "returns 404 for a malformed book id" do
@@ -246,13 +259,14 @@ RSpec.describe "Borrowings", type: :request do
   describe "DELETE /books/:book_id/borrowing variants" do
     let(:book) { create(:book) }
 
-    it "returns 404 when the book was already returned" do
+    it "returns 409 when the book was already returned" do
       create(:borrowing, book:)
       delete "/books/#{book.id}/borrowing", headers: headers
 
       delete "/books/#{book.id}/borrowing", headers: headers
 
-      expect(response).to have_http_status(:not_found)
+      expect(response).to have_http_status(:conflict)
+      expect(response.parsed_body).to eq("error" => "book is not borrowed")
     end
 
     it "returns 404 for a discarded book" do

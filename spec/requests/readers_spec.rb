@@ -157,7 +157,7 @@ RSpec.describe "Readers", type: :request do
         let(:id) { SecureRandom.uuid }
 
         run_test! do |response|
-          expect(response.parsed_body).to eq("error" => "not found")
+          expect(response.parsed_body).to eq("error" => "reader not found")
         end
       end
 

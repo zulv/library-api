@@ -15,7 +15,7 @@ class Reader < ApplicationRecord
     validates :card_number, :full_name, :email, presence: true
     validates :full_name, length: { maximum: 255 }
     validates :email, length: { maximum: 254 }
-    validates :card_number, format: { with: /\A\d{6}\z/, allow_blank: true }, uniqueness: true
+    validates :card_number, format: { with: /\A\d{6}\z/, message: "must be 6 digits", allow_blank: true }, uniqueness: true
     validates :email, format: { with: URI::MailTo::EMAIL_REGEXP, allow_blank: true }, uniqueness: true
   end
 

@@ -84,7 +84,7 @@ GET    /readers/:id
 DELETE /readers/:id                 anonymizes the reader
 ```
 
-- **Errors:** `{ "error": "..." }`, or `{ "errors": { field: [...] } }` for validation errors (422). A conflict such as borrowing a borrowed book gives 409.
+- **Errors:** `{ "error": "..." }`, or `{ "errors": { field: [...] } }` for validation errors (422). A conflict such as borrowing a borrowed book or returning an available one gives 409.
 - **Pagination:** `page` and `limit` (default 25, max 100) go in the query string. The metadata comes back in the `link`, `current-page`, `page-limit`, `total-pages` and `total-count` headers.
 - **Contract:** [`openapi/v1/openapi.yaml`](openapi/v1/openapi.yaml) (OpenAPI 3.0.3).
 
@@ -126,7 +126,7 @@ CI runs these on every pull request, plus `bundler-audit` and the OpenAPI check.
 ## Limitations and next steps
 
 - No roles or audit log of who accessed reader data.
-- An idempotency key for borrow and return, so a retry after a timeout gets the original response instead of 409/404.
+- An idempotency key for borrow and return, so a retry after a timeout gets the original response instead of 409.
 - Overdue reminders and loan extensions.
 - Filtering books by status, title or author.
 - Anonymizing readers inactive for years.
