@@ -403,6 +403,14 @@ RSpec.describe "Books", type: :request do
   describe "POST /books variants" do
     let(:attributes) { { serial_number: "123456", title: "Dune", author: "Frank Herbert" } }
 
+    it "rejects a malformed JSON body" do
+      post "/books", params: '{"book":', headers: headers.merge("Content-Type" => "application/json")
+
+      expect(response).to have_http_status(:bad_request)
+      expect(response.parsed_body).to eq("error" => "invalid JSON")
+      expect(Book.count).to eq(0)
+    end
+
     it "strips whitespace from title and author" do
       post "/books", params: { book: attributes.merge(title: "  Dune ", author: " Frank Herbert ") }, as: :json, headers: headers
 

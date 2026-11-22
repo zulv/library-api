@@ -6,6 +6,7 @@ class ApplicationController < ActionController::API
   rescue_from ActiveRecord::RecordInvalid,        with: :render_unprocessable_content
   rescue_from ActiveRecord::RecordNotUnique,      with: :render_conflict
   rescue_from ActionController::ParameterMissing, with: :render_bad_request
+  rescue_from ActionDispatch::Http::Parameters::ParseError, with: :render_invalid_json
   rescue_from ConflictError,                      with: :render_domain_conflict
 
   private
@@ -28,6 +29,10 @@ class ApplicationController < ActionController::API
 
   def render_bad_request(exception)
     render json: { error: exception.message }, status: :bad_request
+  end
+
+  def render_invalid_json
+    render json: { error: "invalid JSON" }, status: :bad_request
   end
 
   def render_domain_conflict(exception)

@@ -83,6 +83,13 @@ RSpec.describe "Sessions", type: :request do
   end
 
   describe "POST /session variants" do
+    it "rejects a malformed JSON body" do
+      post "/session", params: '{"email_address":', headers: { "Content-Type" => "application/json" }
+
+      expect(response).to have_http_status(:bad_request)
+      expect(response.parsed_body).to eq("error" => "invalid JSON")
+    end
+
     it "accepts an email with different case and whitespace" do
       post "/session", params: { email_address: "  USER@Example.com ", password: "password123" }
 
