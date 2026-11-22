@@ -24,6 +24,14 @@ RSpec.describe Book, type: :model do
       expect(build(:book, serial_number: "12345")).not_to be_valid
     end
 
+    it "explains the expected serial number format" do
+      book = build(:book, serial_number: "12345")
+
+      book.validate
+
+      expect(book.errors[:serial_number]).to eq([ "must be 6 digits" ])
+    end
+
     it "rejects a serial number that is too long" do
       expect(build(:book, serial_number: "1234567")).not_to be_valid
     end

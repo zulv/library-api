@@ -22,7 +22,7 @@ class Book < ApplicationRecord
 
   validates :serial_number, :title, :author, presence: true
   validates :title, :author, length: { maximum: 255 }
-  validates :serial_number, format: { with: /\A\d{6}\z/, allow_blank: true }, uniqueness: true
+  validates :serial_number, format: { with: /\A\d{6}\z/, message: "must be 6 digits", allow_blank: true }, uniqueness: true
 
   before_discard :ensure_not_borrowed
 
